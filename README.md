@@ -1,6 +1,46 @@
 # dcmon
 
-`dcmon` is a Textual UI for inspecting running Docker Compose services and switching git-backed mounts across matching worktrees.
+`dcmon` is a Textual terminal UI for inspecting running Docker Compose services and switching git-backed mounts across matching worktrees.
+
+It is built for local development environments where Compose services bind-mount Git checkouts and you regularly move between a base checkout and ticket-specific worktrees.
+
+## What It Does
+
+- lists running Docker Compose services grouped by project
+- detects the repo, branch, and worktree behind bind-mounted source trees
+- shows detailed mount information for the selected service
+- opens a live log viewer for the selected service
+- plans and applies worktree-aware mount switches using a temporary Compose override file
+
+## Requirements
+
+- Docker
+- Docker Compose v2
+- Python 3.9+ to run from source
+
+## Run From Source
+
+```bash
+make run
+```
+
+That launches `dcmon.py` directly through `uv`.
+
+## Controls
+
+Main screen:
+
+- `j` / `k`: move selection
+- `g` / `G`: jump to top / bottom
+- `l`: open logs for the selected service
+- `s`: open the worktree switch flow
+- `q`: quit
+
+Picker and preview dialogs:
+
+- `/`: focus the filter input
+- `Enter`: confirm
+- `Esc` / `q`: cancel
 
 ## Development
 
@@ -8,14 +48,18 @@
 - `make test`
 - `make run`
 
-## Release Assets
+## Releases
 
-The GitHub Actions workflow publishes standalone archives for:
+`dcmon` publishes standalone archives for:
 
 - `macOS arm64`
 - `Linux x86_64`
 
-For branch and pull request runs, download the build from the workflow artifacts. For tagged releases, download the same archives from the GitHub Releases page.
+Release channels:
+
+- `edge`: rolling prerelease built from the latest push to `main`
+- `dcmon-v*`: stable tagged releases
+- pull requests: workflow artifacts only
 
 ## Running A Downloaded Build
 
