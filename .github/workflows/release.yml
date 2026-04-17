@@ -1,0 +1,151 @@
+name: release
+
+on:
+  pull_request:
+  push:
+    branches:
+      - '**'
+    tags:
+      - dcmon-v*
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.9'
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v8
+        with:
+          enable-cache: false
+
+      - name: Lint dcmon
+        run: make lint
+
+      - name: Test dcmon
+        run: make test
+
+  build:
+    needs: validate
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            archive_name: dcmon-darwin-arm64
+          - os: ubuntu-latest
+            archive_name: dcmon-linux-x64
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install release dependencies
+        run: pip install -r requirements-release.txt
+
+      - name: Resolve packaged version
+        id: version
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" && "${GITHUB_REF_NAME}" == dcmon-v* ]]; then
+            build_version="${GITHUB_REF_NAME#dcmon-v}"
+          else
+            build_version="dev-${GITHUB_SHA::7}"
+          fi
+
+          version_file="${RUNNER_TEMP}/dcmon.version"
+          printf '%s\n' "$build_version" > "$version_file"
+
+          echo "build_version=$build_version" >> "$GITHUB_OUTPUT"
+          echo "version_file=$version_file" >> "$GITHUB_OUTPUT"
+
+      - name: Build standalone binary
+        shell: bash
+        run: |
+          pyinstaller \
+            --noconfirm \
+            --clean \
+            --onefile \
+            --name dcmon \
+            --collect-all textual \
+            --add-data "${{ steps.version.outputs.version_file }}:." \
+            dcmon.py
+
+      - name: Smoke test packaged binary
+        shell: bash
+        run: |
+          version_output="$(./dist/dcmon --version)"
+          test "$version_output" = "${{ steps.version.outputs.build_version }}"
+
+      - name: Package release archive
+        shell: bash
+        run: |
+          package_root="${RUNNER_TEMP}/${{ matrix.archive_name }}"
+          mkdir -p "$package_root"
+          cp ./dist/dcmon "$package_root/dcmon"
+          cat > "$package_root/USAGE.txt" <<EOF
+          dcmon ${{ steps.version.outputs.build_version }}
+
+          Run ./dcmon --version to verify the binary starts.
+          Run ./dcmon on a host with Docker and Docker Compose installed.
+
+          On macOS, if Gatekeeper blocks the binary:
+          xattr -d com.apple.quarantine ./dcmon
+          EOF
+          tar -C "${RUNNER_TEMP}" -czf "${RUNNER_TEMP}/${{ matrix.archive_name }}.tar.gz" "${{ matrix.archive_name }}"
+
+      - name: Upload packaged artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.archive_name }}
+          path: ${{ runner.temp }}/${{ matrix.archive_name }}.tar.gz
+          if-no-files-found: error
+
+  release:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/dcmon-v')
+    needs:
+      - validate
+      - build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download macOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dcmon-darwin-arm64
+          path: release-assets
+
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dcmon-linux-x64
+          path: release-assets
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release-assets/dcmon-darwin-arm64.tar.gz
+            release-assets/dcmon-linux-x64.tar.gz
