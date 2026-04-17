@@ -148,8 +148,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          if gh release view edge >/dev/null 2>&1; then
-            gh release delete edge --yes --cleanup-tag
+          if gh release view edge --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            gh release delete edge --repo "${GITHUB_REPOSITORY}" --yes --cleanup-tag
           elif gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/edge" >/dev/null 2>&1; then
             gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/tags/edge"
           fi
@@ -162,6 +162,7 @@ jobs:
           EOF
 
           gh release create edge \
+            --repo "${GITHUB_REPOSITORY}" \
             release-assets/dcmon-darwin-arm64.tar.gz \
             release-assets/dcmon-linux-x64.tar.gz \
             --target "${GITHUB_SHA}" \

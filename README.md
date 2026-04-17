@@ -4,6 +4,8 @@
 
 It is built for local development environments where Compose services bind-mount Git checkouts and you regularly move between a base checkout and ticket-specific worktrees.
 
+_Disclaimer: this repo is maintained mostly by AI, with humans doing the important job of testing whether the robots are being helpful or just confidently weird._
+
 ## What It Does
 
 - lists running Docker Compose services grouped by project
