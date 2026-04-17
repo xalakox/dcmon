@@ -15,3 +15,7 @@ lint:
 .PHONY: clean
 clean:
 	rm -rf __pycache__ .ruff_cache
+
+.PHONY: screenshot
+screenshot:
+	uv run --script scripts/generate_screenshot.py docs/screenshot.svg

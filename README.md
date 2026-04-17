@@ -6,6 +6,10 @@ It is built for local development environments where Compose services bind-mount
 
 _Disclaimer: this repo is maintained mostly by AI, with humans doing the important job of testing whether the robots are being helpful or just confidently weird._
 
+![dcmon screenshot](docs/screenshot.svg)
+
+_Screenshot uses sanitized demo data._
+
 ## What It Does
 
 - lists running Docker Compose services grouped by project
